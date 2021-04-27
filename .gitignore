@@ -1,0 +1,59 @@
+
+*.ini
+*.pyc
+*.pkl
+*.aux
+*.bbl
+*.blg
+*.out
+*.nav
+*.snm
+*.gz
+*.toc
+*.bak
+*.jpg
+report/.Rhistory
+report/figures/accuracy4.pdf
+report/figures/accuracy.pdf
+report/figures/accuracy1.pdf
+report/figures/accuracy2.pdf
+report/figures/accuracy3.pdf
+report/figures/card_type.pdf
+report/figures/card_type_general.pdf
+report/figures/google-scholar.pdf
+report/figures/large_arch.pdf
+report/figures/loss.pdf
+report/figures/loss1.pdf
+report/figures/loss2.pdf
+report/figures/loss3.pdf
+report/figures/loss4.pdf
+report/figures/not-own-figure.pdf
+report/figures/restnet.png
+*.zip
+card_wrangling.ipynb
+data/cardinfo.php
+discard.ipynb
+out/aa_out.txt
+out/at_out.txt
+out/fa_out.txt
+out/ft_out.txt
+presentation/presentation.log
+proposal/bibliography.bib
+proposal/example-1.pdf
+proposal/figures/google-scholar.pdf
+proposal/figures/not-own-figure.pdf
+proposal/proposal - MM.log
+proposal/proposal - MM.pdf
+proposal/proposal - MM.tex
+proposal/proposal.log
+proposal/proposal.pdf
+proposal/proposal.tex
+proposal/statcourse.sty
+report/cited papers/compare mods.pdf
+report/cited papers/degrad.pdf
+report/cited papers/imbal.pdf
+report/cited papers/small data transf.pdf
+report/cited papers/small data transf2.pdf
+report/deletes.txt
+report/report.tex
+report/report_final.log
