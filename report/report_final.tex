@@ -1,0 +1,356 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+\usepackage{statcourse}
+%\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphbox}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{float}
+
+% Include other packages here, before hyperref.
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[breaklinks=true, bookmarks=false]{hyperref}
+
+
+\statcoursefinalcopy
+
+
+\setcounter{page}{1}
+\begin{document}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% DO NOT EDIT ANYTHING ABOVE THIS LINE
+% EXCEPT IF YOU LIKE TO USE ADDITIONAL PACKAGES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%% TITLE
+\title{The Effects of Dataset Conditions on The\\Predictive Accuracy of ResNet152 for Classifying\\\textit{Yu-Gi-Oh! Trading Card Game} Cards \& Artwork}
+
+\author{Michael Mays\\
+{\tt\small mfmays@wisc.edu}
+\and
+Daniel Halberg\\
+{\tt\small dhhalberg@wisc.edu}}
+
+\maketitle
+%\thispagestyle{empty}
+
+
+
+% MAIN ARTICLE GOES BELOW
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%% ABSTRACT
+\begin{abstract}
+	The impact of dataset conditions on the classification accuracy of convolutional neural networks is well-studied. This report deploys a pre-trained deep neural network to classify \textit{Yu-Gi-Oh! Trading Card Game} cards. We augment existing literature by examining how dataset effects manifest in a ResNet152 network trained on four combinations of \textit{Yu-Gi-Oh!} card image type and dataset composition. Specifically, we find that dataset size and classification task (jointly) are the primary determinant of ResNet152's predictive accuracy, while our results for image type are inconclusive. We also present a compelling example of the extent to which \textit{information relevance} mediates potential dataset size effects.
+   	%The abstract for your project goes here. The length of the abstract should be between 200-250 words. Tips for writing a good abstract can be found at \url{https://writing.wisc.edu/Handbook/presentations_abstracts.html}.
+\end{abstract}
+
+%%%%%%%%% BODY TEXT
+
+%-------------------------------------------------
+\section{Introduction}
+%\noindent\textit{Recommended length: 1/2 to 1 pages.}\vspace{1cm}
+%-------------------------------------------------
+
+The \textit{Yu-Gi-Oh! Trading Card Game} (hereafter, \textit{YGO} or ``the \textit{TCG}'') is a competitive collectible card game launched in North America during 2002. \textit{YGO} games (called ``duels'') involve two players who take turns drawing and playing cards according to the game's rules and card-specific conditions. Since its launch, over 10,000 distinct trading cards have been created for the \textit{TCG}, each falling into one of three broad \textit{card types}: monster cards, spell cards, and trap cards. 
+
+\textit{YGO} cards also increasingly belong to one of 200+ \textit{archetypes}, which are groups of related monster, spell, and/or trap cards that explicitly reference each other in their card effects. Archetypes tend to have similar artwork, a common naming structure, and card effects that strategically synergize well. Monsters within an archetype also tend to share one or more of these characteristics: race, primary type, secondary type, element, level/rank/link rating. For example, figure \ref{fig:card-ex} (see additional figures in appendix) shows three cards (one each of monster, spell, and trap) from the ``Dark Magician'' archetype. These cards are part of the ``Dark Magician'' archetype because they explicitly reference ``Dark Magician'' in their card text (the box at the bottom of the card). They all share a naming structure encompassing Dark Magician, ``Magician Girl'' cards, and possessive ``Magician's'' cards, while their monsters share the Spellcaster race and (almost always) the DARK element.
+
+Between these two extremes---grouping cards into 3 classes vs. 200+---there are many ways to divide \textit{YGO} cards that yield a different number of classes. Of particular note, each card also has one or more \textit{types} (distinct from \textit{card} types) that are given at the top of the card's text box in order of decreasing `priority.' The first type listed after the card's \textit{race} (what kind of creature a monster card represents, such as Beast, Warrior, or Spellcaster) is the card's \textit{primary type}. Primary type determines how a card functions (which rules govern how it can be played), and most primary types have distinct card border colors/hues. For example, link monsters have dark blue borders, ritual monsters' are light blue, fusion monsters' are violet, and trap cards' are purple.
+
+The goal of this report is to assess and compare the ability of an existing convolutional neural network (CNN) to classify \textit{YGO} cards using datasets that vary in size (that is, the number of examples) and information density (that is, the amount of classification-relevant data contained in the image). We aim to demonstrate the effect of various dataset conditions on classification accuracy using a dataset of \textit{YGO} cards. Specifically, we explore the ability of ResNet152 to accurately classify four \textit{YGO} card datasets: all full cards, all card artwork, full cards from only `large' archetypes (see Section 4.1), and card artwork from only `large' archetypes. 
+
+It is important to note that generalizability \textit{per se} is not a primary goal of this report; as discussed in the next Section, numerous articles exist demonstrating the effects of dataset and image information density on classification accuracy. Rather, we present a novel case study that augments existing literature by comparing how these effects manifest in CNNs trained on (1) images expressly designed to be dense with classification information (full \textit{YGO} cards), and (2) images stripped of most---but not all---of this information. We further tease out any effects by comparing the two model--dataset combinations' classification accuracies in two tasks of varied difficulty. After briefly surveying related work in Section 2, we outline the architecture of ResNet152 (Section 3) before detailing the experiments we conducted (Section 4). We lay out our results in Section 5 and thereafter conclude the report (Section 6).
+
+%Classifying full cards by primary type should yield relatively high accuracy due to the presence of primary type-specific border colors for most primary types. The second task, classifying by primary type using only artwork, assumes that the general composition of each class's artwork should be different enough to enable some intermediate degree of classification (e.g., monster cards tend to depict a single creature, spell cards tend to depict objects or actions, and trap cards tend to depict scenes). The third
+
+%-------------------------------------------------
+\section{Related Work}
+%\noindent\textit{Recommended length: 1/2 to 1 pages.}\vspace{1cm}
+%Related work should be discussed here. This should be a short (1/2 to 1 page) discussion of work (from research papers and articles) that explored similar questions. For example, if you plan to predict COVID-19 from chest X-ray images, discuss previous work that was about a similar project. If the focus of your project is on analyzing the behavior of certain machine learning on a variety of different datasets, and the comparison itself (rather application) is the focus of your paper, discuss other papers that analyzed different algorithms.
+%-------------------------------------------------
+
+Deep learning literature is rife with comparisons of different network architectures' accuracies on a given data set (see, for example, \cite{mods1}; \cite{mods2}; \cite{mods3}). Likewise, there exist numerous studies showing the effects of various dataset conditions on a given network's ability to accuracy classify examples (\cite{ds1}; \cite{ds2}; \cite{ds3}; and \cite{smallds}, to name a few). Work on these two topics is so ubiquitous and fundamental to deep learning writ large that general knowledge of the results---more data tends to improve predictive accuracy (up to a point), newer network architectures tend to perform better than older ones (up to a point), and so on---is assumed for the purposes of paper.
+%The motivating idea behind these comparisons is that fixing the data set creates an even playing field on which to compare the various architectures' classification abilities. 
+
+Still, the above-referenced papers present only broad results; the body of work directly related to deep neural networks for classifying \textit{YGO} or other card game images is more limited. Konami Holdings Corporation, the company that owns \textit{YGO}, has released the \textit{Yu-Gi-Oh! Neuron} phone application, which includes augmented reality card recognition \cite{kon}. Following \textit{Neuron}'s release, Lowhur sought to imitate its functionality with an application that implements a deep neural network for one-shot learning \cite{dl}. While such an application could theoretically be used to categorize cards by primary type and/or archetype (by identifying the card and then simply looking up the card's primary type or archetype), Lowhur does not do so. Finally, GitHub user \texttt{chronoreaper} utilized a deep learning model to train an artificial intelligence that builds decks for and plays a \textit{YGO} video game, which incorporates some elements of card recognition %(though most input during a duel comes from reading the game's code or via text recognition) 
+\cite{ai}.
+
+%\vfill\newpage
+%-------------------------------------------------
+\section{Proposed Method}
+%\noindent\textit{Recommended length: 1 to 2 pages.}\vspace{1cm}
+%Describe the method(s) you are proposing, developing, or using. Most students will not propose new or modified machine learning methods or algorithms. In this case, describe how the main algorithms you are using work. This may include mathematical details.
+%-------------------------------------------------
+
+All experiments make use of a pre-trained ResNet152 model implemented in \texttt{pytorch}. This is a convolutional neural network whose name is derived from its structure: it makes use of a \textit{network} of \textit{residual} blocks. The architecture of these blocks is shown in figure \ref{fig:block}. Let $\mathbf{x}$ be the input and denote by $f(\mathbf{x})$ the mapping function that the model aims to learn. In a traditional CNN (the left diagram in figure \ref{fig:block}), convolutional `blocks' map $\mathbf{x} \mapsto f(\mathbf{x})$; thus, $\mathbf{x}$ is the sole determinant of $f(\mathbf{x})$, which is the value then fed to the activation function $\sigma()$. In a ResNet residual block (the right diagram in figure \ref{fig:block}), the `block' instead maps the input onto its residual $f(\mathbf{x}) - \mathbf{x}$ while the right-most line---called a \textit{residual connection}---carries the input $\mathbf{x}$ (unmodified) to the addition operator. In ResNet, this is done via a $1 \times 1$ convolution. It is added to the block's output $f(\mathbf{x}) - \mathbf{x}$; the result, $f(\mathbf{x})$ is then fed to the activation function. ResNet's residual block design enables inputs to forward propagate more quickly across layers via residual connections.
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[align=c, width=\columnwidth]{./figures/block.jpg}
+\caption[caption]{Diagram of residual block architecture. Source: \cite{dive}}
+\label{fig:block}
+\end{center}
+\end{figure}
+
+An (abbreviated) diagram of ResNet152's architecture is shown in figure \ref{fig:resnet}. The initial input is a $7 \times 7$ convolutional layer with 3 input channels, 64 output channels, and a stride of 2. This is followed by batch normalization, a ReLU activation function, and then a $3 \times 3$ maximum pooling layer with stride 2. Thereafter, each set of blocks (or \textit{module}) continues as follows: the first residual block for each module doubles the number of channels (relative to the previous module), subsequent blocks in that module have the same number of input and output channels, and the height and width are halved. This continues until there are 152 total layers in the network. These convolutional layers culminate in an average pooling layer, then a size-1000 fully-connected layer, and finally a softmax activation function. The output of the network is then used to calculate cross-entropy loss, and the errors are used to update the network's weights.
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[align=c, width=.43\columnwidth]{./figures/restnet.jpg}
+\caption[caption]{ResNet152 architecture diagram. Source: \cite{resnet}}
+\label{fig:resnet}
+\end{center}
+\end{figure}
+
+The same hyperparameter values (e.g., batch size, epoch count, etc.), optimizer, and learning rate scheduler were used for all four experiments described in the next section. The one exception was learning rate, which was tuned for each experiment separately; our goal is to compare the `best' version of ResNet152 under the experimental conditions, so this is necessary for fair comparison. For the sake of space, these details are given in table \ref{tab:model-prefs}.
+
+%\vfill\clearpage
+%-------------------------------------------------
+\section{Experiments}
+%Describe the experiments you performed to address specific questions. This includes information about the dataset and software, which are listed as subsections below. Please do not remove these subsections.
+%-------------------------------------------------
+
+The four sets of experimental conditions are shown in table \ref{tab:exp}. These correspond to every combination of two, two-level experimental factors: image (full card or artwork) and data subset (all cards or `large' archetypes only). The two different sets of targets---primary type and archetype---were also varied, but we did not fit every image--subset--target combination for two reasons. First, the all-cards--archetype subset--target combination is unworkable, since most cards do not belong to one of the `large' archetypes. Second, the number of target classes is only meant to adjust the network's classification difficulty under each of the four experimental conditions, it is not intended to be a full experimental factor in itself. In other words, we primarily aim only to demonstrate how varying dataset size and image information density impacts classification accuracy; the two sets of targets merely act as illustrative examples on opposite ends of the classification difficulty spectrum.
+
+\begin{table}[h]
+	\begin{center}
+		%\addtolength{\leftskip} {-0.75cm}
+		\begin{tabular}{ l  l | c | c |}
+			& \multicolumn{1}{r}{} & \multicolumn{2}{c}{\textbf{Target (Data subset)}} \\
+			\cmidrule{3-4}
+			Variable & Image & \shortstack{Primary Type\\(All cards)} & \shortstack{Archetype\\(`Large' arch.)} \\
+			\midrule
+			No. classes & \multirow{2}{*}{} & Less & More \\
+			Dataset size && More & Less \\
+			\midrule
+			\multirow{2}{*}{Image info.} & Full card & \multicolumn{2}{c|}{More}\\
+			\cmidrule{2-4}
+			& Artwork & \multicolumn{2}{c|}{Less}\\
+			\bottomrule
+		\end{tabular}
+	\vspace{0.1cm}
+	\caption{Experimental parameters. Rows represent the two different information densities (full vs. artwork). Columns represent the two different dataset sizes (all vs. `large' archetypes).}
+	\label{tab:exp}
+	\end{center}
+\end{table}
+
+Specifically, we address the following research questions:
+
+\begin{enumerate}
+\item \textbf{Dataset size \& classification task}: For a given image type (either full cards or artwork only), how do the size of the \textit{YGO} dataset (all cards vs. `large' archetype cards) and classification task (either primary type or `large' archetypes) jointly impact ResNet152's classification accuracy?
+
+\item \textbf{Image type}: For a given size of \textit{YGO} dataset (either all cards or `large' archetype cards) and classification task (either primary type or `large' archetypes), how does image type (full cards vs. artwork only) impact ResNet152's classification accuracy?
+
+\end{enumerate}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{r | l | l}
+\multirow{2}{*}{\shortstack{Hyperparameter/\\Setting}} & \multirow{2}{*}{Value(s)} & \multirow{2}{*}{Comment}\\
+&&\\
+\midrule
+Random seed & 453 &\\
+Batch size & 32 &\\
+Epochs & 40 &\\
+\midrule
+Optimizer & Adam &\\
+\cmidrule{2-3}
+\multirow{4}{*}{Learning rate} & Full cards, primary type: 0.0005 &\\
+& Full cards, archetype: 0.0003 &\\
+& Artwork, primary type: 0.0001 &\\
+& Artwork, archetype: 0.0001 &\\
+\midrule
+\multirow{3}{*}{Scheduler} & \multirow{2}{*}{\shortstack{Reduce learning rate on plateau}} & \multirow{2}{*}{\shortstack{Reduces learning rate by \texttt{Factor} when minibatch\\loss stops improving for 10 epochs.}}\\
+&&\\
+%\cmidrule{2-3}
+& Factor: 0.2 & New LR $=$ LR $*$ Factor\\
+\end{tabular}
+\vspace{0.1cm}
+\caption{Model hyperparameter values.}
+\label{tab:model-prefs}
+\end{center}
+\end{table}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{c | l | l}
+Transform & Value(s)/Range & Comment \\
+\midrule
+Resize & Full card: 312x211 & HxW in px, half-sized\\
+\cmidrule{2-3}
+\multirow{4}{*}{\shortstack{Random\\resized crop}} & \multirow{4}{*}{Artwork: 272x322} & \multirow{4}{*}{\shortstack{HxW in px, each is the smaller image format's value\\for that dimension. This is akin to randomly shifting\\pendulum cards horizontally and non-pendulum\\cards vertically before cropping.}}\\
+&&\\
+&&\\
+&&\\
+\midrule
+\multirow{4}{*}{\shortstack{Random\\color jitter}} & Brightness: (0.75, 1.5) & \multirow{4}{*}{\shortstack{Multiplier uniformly chosen from range (min, max)}} \\
+& Contrast: (0.75, 1.5) & \\
+& Saturation: (0.75, 1.5) & \\
+& Hue: (0.9, 1.1) & \\
+\midrule
+\multirow{2}{*}{Random flip} & Horizontal: $p=0.5$ &\\
+& Vertical: $p=0.5$ &\\
+\midrule
+\multirow{5}{*}{\shortstack{Random affine\\transformation}} & Interpolation: Bilinear &\\
+\cmidrule{2-3}
+& \multirow{2}{*}{Translate: (0.2, 0.2)} & \multirow{2}{*}{\shortstack{Max. (H, W) shift (prop. of size)}}\\
+&&\\
+\cmidrule{2-3}
+& \multirow{2}{*}{Shear: (0, 10)} & \multirow{2}{*}{\shortstack{Degrees, both x and y (separately)}}\\
+&&\\
+\midrule
+\multirow{2}{*}{Normalize} & Mean: (0.485, 0.456, 0.406) & \multirow{2}{*}{\shortstack{(R, G, B), see \\\url{https://pytorch.org/vision/stable/models.html}}} \\
+& Std. dev.: (0.229, 0.224, 0.225) & \\
+\end{tabular}
+\vspace{0.1cm}
+\caption{Data augmentation settings.}
+\label{tab:image-prefs}
+\end{center}
+\end{table}
+
+\vfill\clearpage
+
+\subsection{Dataset}
+%Briefly describe your dataset in a separate subsection.
+
+Card data for 11,149 \textit{YGO} cards (every \textit{TCG} card as of February 21, 2021) was downloaded from the \texttt{YGOPRODeck} database \cite{api}. Then, images for each card were downloaded from the database's API in Python using \texttt{requests}. Each card was then cropped down to its artwork using \texttt{PIL}. Note that there are two card formats: a ``regular'' card format, which is used for most cards; and a ``pendulum'' card format, which is used for pendulum cards. The artwork for these formats have different shapes and sizes. An example of a pre- and post-crop card for both formats is shown in figure \ref{fig:crop-ex} (see additional figures in appendix). This resulted in 11,149 RGB full-card images (614H x 422W), plus 11,149 RGB artwork images: 277 pendulum cards (272x367) and 10,872 regular cards (320x322). We will refer to the complete set of full-card images and cropped images as the 'full type' and 'artwork type' datasets, respectively. These datasets had 18 classes (one for each primary type) and reflect the left column of table \ref{tab:exp}. The distribution of these classes is shown in figure \ref{fig:eda}. 
+
+For archetype-related experiments, a subset of 3,451 cards was used containing all cards in the 107 archetypes with 20 or more member cards. This 20-card cutoff was chosen for two reasons. First, it removes non-archetype cards and those in archetypes too small for the network to feasibly classify, and thereby increases the examples-per-archetype ratio; preliminary attempts to classify the full dataset by archetype yielded accuracies so low as to be pure noise. Second, larger archetypes tend to be more distinct (that is, the `gimmick' that relates cards in larger archetypes is typically more well-defined), so the full-card images for these archetypes contain more information that the network could theoretically use to classify examples. We will refer to this dataset generally as the `large archetypes' dataset, and to its full-card and artwork variants as the 'full archetype' and 'artwork archetype' datasets, respectively. These datasets had 107 classes (one for each `large' archetype) and reflect the right column of table \ref{tab:exp}. The distribution of archetype class sizes is shown in figure \ref{fig:eda}.
+
+After all cards were downloaded and cropped, a train/validation/test split was created for each dataset--target (experimental) combination. Both 'type' datasets were split (stratified by class) with a train/validation/test ratio of 80/10/10, respectively. For the 'archetype' datasets, the split (stratified by class) was 60/20/20, respectively. These split sizes differ to account for the lower example-to-class ratio in the `archetype' datasets. Finally, data augmentation was implemented to mitigate overfitting. The same data augmentation settings were used for every experiment to prevent confounding; these are given in table \ref{tab:image-prefs}.
+
+\begin{figure}[t]
+\begin{center}
+	  \includegraphics[align=c, width=0.9\columnwidth]{./figures/card_type_general.pdf}
+	  
+	  \includegraphics[align=c, width=0.8\columnwidth]{./figures/large_arch.pdf}
+\end{center}
+\caption[caption]{Top: Distribution of primary types. ``M.'' is short for ``Monster'' and ``C.'' is short for ``Card''.; Bottom: Distribution of archetype size among `large' archetypes ($n\geq 20$).}
+\label{fig:eda}
+\end{figure}
+
+\subsection{Hardware \& Software}
+%Briefly list (and cite) software software you used.
+%If relevant, list hardware resources you used.
+
+Work was done in Python via Google Colab in order to (1) enable easier collaboration between the authors, and (2) make use of Google GPU resources. This was accessed via our personal laptops. We made use of \texttt{PyTorch} and the pre-trained ResNet152 model implemented in \texttt{torchvision} for all experiments; we also used the latter for data augmentation (for details, see table \ref{tab:image-prefs} in additional figures appendix).
+
+\begin{figure*}[btp]
+\begin{center}
+\includegraphics[align=c, width=0.95\textwidth]{./figures/loss.pdf}
+\end{center}
+\caption[caption]{Minibatch loss curves with running average for ResNet152 under each set of image--dataset conditions. Note that the gray and brown curves (Artwork, Archetype and Full, Archetype, respectively) end `prematurely' because these networks were trained on a smaller dataset for the same number of epochs as all other networks. An iteration is one epoch--batch, so for a fixed number of epochs, smaller datasets are trained for fewer total iterations.}
+\label{fig:loss}
+\end{figure*}
+
+Since both datasets are heavily class-imbalanced, all data loaders included the \texttt{ImbalancedDatasetSampler} found in \texttt{torchsampler} \cite{imbal}. This over- and under-samples from under- and over-represented classes, respectively, in order to create a uniform distribution of classes in the train, validate, and test datasets. Data wrangling was done with \texttt{Pandas} and \texttt{NumPy}, and splitting was done with \texttt{train\_test\_split} in \texttt{sklearn}. Card data objects were serialized for speed and reproducibility purposes using \texttt{pickle}. Plots were created using \texttt{matplotlib} based on modified code from Dr. Sebastian Raschka's \texttt{helper\_plotting.py} \cite{seb}. Finally, to ease implementing the experimental conditions, reduce possible sources of human error, and improve reproducibility, `wrapper' functions and classes were created; under the hood, these call functions from Dr. Sebastian Raschka in \texttt{helper\_dataset.py}, \texttt{helper\_evaluation.py}, and \texttt{helper\_train.py} \cite{seb}. 
+
+% What is the naive probability for each dataset?
+
+%-------------------------------------------------
+\section{Results and Discussion}
+%Describe the results you obtained from the experiments and interpret them. Optionally, you could split "Results and Discussion" into two separate sections, but it is often easier to present the results and discuss them at the same time. In this section, you will likely want to create several subsections that address your specific research questions. As an example for structuring the Results and Discussion section, you can take a look at the following paper: \url{https://www.mdpi.com/2078-2489/11/7/345}.
+%-------------------------------------------------
+
+This section first lays out the results model-by-model before addressing each research question; for reasons explained below, we begin with the second research question. We begin with the full-card primary type combination because it will serve as a baseline for comparisons. The minibatch loss and running average loss for this network are shown in blue in figure \ref{fig:loss}. Clearly, this combination minimized the cross-entropy loss function both the fastest and most completely among all four image--dataset combinations. This is reflected in its training accuracy (again in blue, figure \ref{fig:acc}, left), which starts highest among all combinations and approaches 100\% well before the full card/archetype combination does (in epoch terms). The validation accuracy (in blue, figure \ref{fig:acc}, right) likewise starts the highest by a wide margin ($\sim$80\% vs. the next-highest at $\sim$25\%) and remains untouched, ending with a validation accuracy near $\sim$95\%.
+
+The full card/archetype combination (shown in brown) is the only other image--dataset combination that approached the full card/primary type combination in terms of both loss minimization and training accuracy. In both cases, however, the archetype network takes longer to begin approaching these values. This is perhaps an expected result given that the archetype network has a `harder' task (classifying fewer examples into more classes). The high training accuracy is not matched by the validation accuracy, which rises from the single-digits into the $\sim$30\% region. The fact that the network is able to do so, however, seems largely a figment of the classifier-rich nature of the images rather than genuine on-target learning. One notable result to this effect is that other archetype-targeting combination, artwork/archetype (gray), has a validation accuracy trajectory that closely matches its full-card counterpart despite being less effective at both minimizing loss (ending with a loss near $0.5$) and classifying training examples ($<$90\% training accuracy). We return to this topic after discussing the final image--dataset combination.
+
+\begin{figure*}[h]
+\begin{center}
+\includegraphics[align=c, width=0.9\textwidth]{./figures/accuracy.pdf}
+\end{center}
+\caption[caption]{Training (left) and validation (right) accuracy curves for ResNet152 under each set of image--dataset conditions.}
+\label{fig:acc}
+\end{figure*}
+
+Finally, the artwork/primary type combination (green) struggled most. The network ended with roughly the same loss as its archetype counterpart, and marginally lower training accuracy at $\sim$80\%. Despite its relatively `big' dataset (all cards' artwork) and training for many more iterations (due to being fit on a larger dataset of all cards' artworks), the network seemingly failed to `learn' much of anything; its validation accuracy fluctuated around 25\% throughout training, starting at a distant second-best but ending in last place. 
+
+This is a sensible place to initiate a broader discussion of our results because it represents a worst case scenario where the training data cannot meaningfully `teach' a network because the images simply do not contain information about the target. Primary type is only reflected in each card's text box and (usually) card border color; it is not reflected in the card's artwork. For example, nearly all Synchro Monsters could be re-made as Effect Monsters or Fusion Monsters without touching their artwork. As a result, this network failed to learn at all, performing worse than its archetype counterpart despite training on a `bigger' dataset for a (theoretically) simpler classification task. Comparisons to the network's full card counterpart are thus trivial; the full card network learned better from the get-go, and this training translated into the validation dataset. In other words, when the ResNet152 is trained on images containing the information necessary for accurate classification, it can accurately classify new images. This is an expected (and, frankly, trivial) result for our second research question.
+
+However, the two archetype combinations saw near-identical validation accuracy increases throughout training despite having different image types. This implies that dataset size and classification task (jointly) were the bottleneck in these experiments. In other words, there likely weren't enough images in the dataset to train ResNet152 for a 107-class classification task unless those images are \textit{very highly} class-distinct, which neither image type was. The archetype networks' validation accuracies represent a kind of boundary condition for ResNet152 trained on this dataset--target combination. Our experiments are thus inconclusive as to any specific effect of image type on model accuracy for this dataset--target combination, and offer no supplement to the trivial result presented above for the second research question.
+
+On the other hand, these results strongly demonstrate the primacy of dataset size and classification task (jointly) in determining how accurately a network can classify novel data. The `large' archetype dataset and archetype classification task, together, represented a hard limit on ResNet152's ability to accurately classify examples regardless of what information was in the images it trained on. Only when this limitation was removed---as it was for the other dataset--target combination---was image type able to impact model accuracy. Only after surplus training examples were available could the \textit{quality} of those examples become the limiting factor of model accuracy. Thus, our experiments suggest an expected but compelling answer to the first research question: when classifying \textit{YGO} cards with ResNet152, dataset size and classification task (jointly) have a substantial and direct impact on the network's classification accuracy. Attempting to slice the data too `thin' will yield poor performance.
+
+%-------------------------------------------------
+\section{Conclusions}
+%\noindent\textit{Recommended length: 1/3 to 1/2 page.}\vspace{1cm}
+%Describe your conclusions here. If there are any future directions, you can describe them here, or you can create a new section for future directions.
+%-------------------------------------------------
+
+Our major finding is that dataset size and classification task, jointly, were the primary determinant of ResNet152's ability to classify \textit{YGO} images in our experiments. This outcome aligns well with existing literature and serves as a clear example of how these dataset conditions---specifically, dataset size and classification task---can impact ResNet152's ability to `learn' for the purposes of prediction. It is important to note that we cannot disentangle the individual main effects of dataset size and classification task due to the design of our experiments. An experiment that distinguishes the two---that is, a design where dataset size and classification task were crossed---offers a promising route for future deep learning research on this dataset.
+
+Clearly, the first limitation of our analysis is the lack of a non-trivial result for the second research question. Our result---images containing classification-relevant information are more useful for training a CNN than those that do not---is not particularly revelatory. Future work could improve our experiment by adding an additional dataset--target combination that lies between the two difficulty extremes examined herein. For example, a dataset composed only of monster cards would retain over 65\% of the complete dataset; it is possible that a dataset this size would support a classification task as or more `difficult' than the primary type task, but less `difficult' than the archetype task.
+
+One final potential avenue for future research is an experiment that makes better use of the classifier-dense card images. Simply put, there are dozens of ways to crop \textit{YGO} cards that yield different levels of information density, and these cropped images could, in turn, support a plethora of dataset sizes and classification tasks. One obvious example is cropping the cards down to the card effect box and/or artwork and using this to classify, say, archetype or primary type. This crop would remove the `easy' classification information---name, element, level/rank, and card border, for a few examples---while retaining some of that information in more subtle ways. For instance, card border colors are reflected in the background color of the card's effect box, though the latter's color tends to be a muted and/or desaturated version of the former, and is therefore less distinct. 
+
+%-------------------------------------------------
+\section{Acknowledgements}
+%\noindent\textit{Recommended length: 2-4 sentences.}\vspace{1cm}
+%List acknowledgements if any. For example, if someone provided you a dataset, or you used someone else's resources, this is a good place to acknowledge the help or support you received.
+%-------------------------------------------------
+
+The authors wish to thank Dr. Raschka for the code on which our network training is based, as well as his assistance in fleshing out our experiment.
+
+%-------------------------------------------------
+\section{Contributions}
+%\noindent\textit{Recommended length: 1/3 to 1/2 page.}\vspace{1cm}
+%Describe the contributions of each team member who worked on this project.
+%-------------------------------------------------
+
+Card data and images were scraped by Michael. The authors worked collaboratively on all major aspects of the project: model implementation, model evaluation, and writing. Since the authors communicate frequently, more fine-grained details about which author did which specific portions of the project are neither possible nor necessary. It is the opinion of both authors that all work was sufficiently collaborative in nature, and neither author feels that the other did less than their ``fair share''.
+
+\clearpage
+{\small\raggedright
+\bibliographystyle{ieee}
+\bibliography{biblio.bib}
+}
+
+\clearpage
+\onecolumn
+\section*{Appendix: Additional Figures}
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[height=2.75in]{./figures/mon.jpg}
+		\hspace{1cm}
+		\includegraphics[height=2.75in]{./figures/tr.jpg}
+		\hspace{1cm}
+		\includegraphics[height=2.75in]{./figures/sp.jpg}
+	\end{center}
+\caption{Monster, spell, and trap cards (left, center, and right, respectively) in the ``Dark Magician'' archetype cards. Note that all cards reference ``Dark Magician'' in their card text. \newline Left image source: \url{https://storage.googleapis.com/ygoprodeck.com/pics/97631303.jpg} \newline Middle image source: \url{https://storage.googleapis.com/ygoprodeck.com/pics/73616671.jpg} \newline Right image source: \url{https://storage.googleapis.com/ygoprodeck.com/pics/86509711.jpg}}
+\label{fig:card-ex}
+\end{figure}
+
+\begin{figure*}[b]
+\begin{center}
+	  \includegraphics[align=c, width=0.24\textwidth]{./figures/before.jpg}
+	  \hspace{.25cm}
+	  \includegraphics[align=c, width=0.2\textwidth]{./figures/after.jpg}
+	  \hspace{.25cm}
+	  \includegraphics[align=c, width=0.24\textwidth]{./figures/pend_before.jpg}
+	  \hspace{.25cm}
+	  \includegraphics[align=c, width=0.23\textwidth]{./figures/pend_after.jpg}
+\end{center}
+\caption[caption]{Far Left: Regular card before cropping. Center-Left: Regular card artwork after cropping.\\ \hspace*{1.3cm}
+Center-right: Pendulum card before cropping. Far right: Pendulum card artwork after cropping. \\\hspace{\textwidth} Far left image source: \url{https://storage.googleapis.com/ygoprodeck.com/pics/10000.jpg} \\\hspace{\textwidth} Center-right image source: \url{https://storage.googleapis.com/ygoprodeck.com/pics/25629622.jpg}}
+\label{fig:crop-ex}
+\end{figure*}
+
+
+
+\end{document}

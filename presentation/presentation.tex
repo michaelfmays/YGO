@@ -1,0 +1,597 @@
+\documentclass[11pt]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{lmodern}
+\usetheme{Pittsburgh}
+\usecolortheme{beaver}
+\usepackage[skip=2pt]{caption}
+\usepackage{xcolor}
+\definecolor{darkred}{rgb}{0.8,0,0}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{graphbox}
+\usepackage{graphics}
+\usepackage{epsfig}
+\usepackage{float}
+\usepackage[square, numbers]{natbib}
+\bibliographystyle{unsrtnat}
+\setbeamerfont{caption}{size=\scriptsize}
+\usepackage{caption}
+\captionsetup{skip=0pt,belowskip=-0.4in}
+\usepackage{bbm}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Title page/overview
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\author{\hspace{-4cm}\shortstack{Michael Mays\\
+{\tt\small mfmays@wisc.edu}}
+\and
+\shortstack{Daniel Halberg\\
+{\tt\small dhhalberg@wisc.edu}}}
+
+\title{The Effects of Dataset Conditions on The Predictive Accuracy of ResNet152 for Classifying \textit{Yu-Gi-Oh! Trading Card Game} Cards \& Artwork}
+
+\institute{\hspace{-4cm}Department of Statistics\\\hspace{-4cm}University of Wisconsin--Madison}
+
+\date{\hspace{-4cm}April 29, 2021}
+
+\titlegraphic{%
+  \begin{picture}(0,0)
+    \put(150,115){\makebox(0,0)[rt]{\includegraphics[height=4.5cm]{../report/figures/mon.jpg}}}
+  \end{picture}}
+\AtBeginSection[]{
+\begin{frame}{Talk Overview}
+\tableofcontents[currentsection]
+\end{frame}
+\frame{\sectionpage}
+}
+
+\setbeamertemplate{navigation symbols}{}
+
+\begin{frame}[plain]
+	\maketitle
+	\footnotesize Source: \url{https://storage.googleapis.com/ygoprodeck.com/pics/97631303.jpg}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Overview}
+
+	\begin{itemize}
+	\item\alt<1>{Background \& related work\\ \includegraphics[align=c, height=6.5cm]{../report/figures/before.jpg}}{Background \& related work}
+	\pause
+	\item\alt<2>{Proposed method: ResNet152\\ \includegraphics[align=c, height=6.25cm]{../report/figures/block.jpg}}{Proposed method: ResNet152}
+	\pause
+	\item\alt<3>{Experiment: Design \& dataset\\ \begin{figure}\raggedright\includegraphics[width=0.45\textwidth]{../report/figures/card_type_general.pdf}\hspace*{0.1cm}\includegraphics[width=0.38\textwidth]{../report/figures/large_arch.pdf}\end{figure}}{Experiment: Design \& dataset}
+	\pause
+	\item\alt<4>{Results\\ \includegraphics[align=c, height=5.5cm]{../report/figures/accuracy.pdf}}{Results}
+	\end{itemize}
+
+	\begin{overprint}
+	\onslide<1>\includegraphics[height=4.5cm]{../report/figures/mon.jpg}
+	\end{overprint}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Intro/background
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+	\frametitle{Background: The \textit{Yu-Gi-Oh! Trading Card Game}}
+
+	\begin{figure}
+	\vspace*{-2cm}
+	\hspace*{6.5cm}
+	\includegraphics[align=c, height=6.5cm]{../report/figures/before.jpg}
+	\caption{Source: \url{https://storage.googleapis.com/ygoprodeck.com/pics/10000.jpg}}
+	\end{figure}
+	\vspace*{-6cm}
+	\begin{itemize}
+	\pause
+	\item Launched 2002 in North America
+	\pause
+	\item Over 10,000 distinct cards
+	\pause
+	\item Numerous ways to classify\\each card. We use:
+	\pause
+		\begin{itemize}
+		\item \textbf{Primary type}: Determines \\how the card functions
+	\pause
+		\item \textbf{Archetype}: Which ``family''\\the card belongs to (if any)
+		\end{itemize}
+	\end{itemize}
+	
+\end{frame}
+
+\begin{frame}
+	\frametitle{The Goal}
+	\pause
+	\begin{itemize}
+	\item Ability of a pre-trained ResNet152 CNN to classify \textit{YGO} cards using datasets with varied:
+		\pause
+		\begin{itemize}
+		\item Size \& classification target%: the number of examples and the classes that the model aims to learn, respectively. (These are varied jointly (i.e., they are one experimental factor \textit{together}).)
+\pause
+		\item Information density%: the amount of classification-relevant data contained in the image. Either the full card (with all information) or the artwork (with little information).
+		\end{itemize}
+\pause
+	\item Why?
+		\begin{itemize}
+\pause
+		\item Why not?
+\pause
+		\item To demonstrate the effect of various dataset conditions on ResNet152's ability to accurately classify YGO cards.
+\pause
+		\item Tons of literature about dataset effects \textit{in general}, but this (\textit{YGO}) is a novel dataset.
+		\end{itemize}
+	\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Related Work: CNNs}
+\pause
+	\begin{itemize}
+	\item Tons of comparisons of different network architectures' accuracies on a given data set (e.g., \cite{mods1}; \cite{mods2}; \cite{mods3}).
+\pause
+	\item Same for dataset conditions' impact on a given network's ability to accuracy classify (\cite{ds1}; \cite{ds2}; \cite{ds3}; and \cite{smallds}, to name a few).
+\pause
+	\item Fundamental, so we will assume general knowledge of these results:
+\pause
+		\begin{itemize}
+		\item More data tends to improve predictive accuracy (up to a point).
+\pause
+		\item Newer network architectures tend to perform better than older ones (up to a point).
+\pause
+		\item And so on.
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Related Work: \textit{Yu-Gi-Oh!}}
+
+	\begin{itemize}
+	\item The \textit{Yu-Gi-Oh! Neuron} phone application includes augmented reality card recognition \cite{kon}.
+	\item Lowhur sought to imitate its functionality via deep neural network one-shot learning \cite{dl}.
+	\item GitHub user \texttt{chronoreaper} used deep learning to train an AI to play a \textit{YGO} video game, including some card recognition \cite{ai}.
+	\end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Method
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+	\frametitle{ResNet152 Architecture}
+	
+	\begin{figure}[h]
+	\begin{center}
+	\vspace*{-1cm}
+	\includegraphics[width=.3\textwidth]{../report/figures/restnet1.jpg}
+	\hspace{1cm}
+	\includegraphics[width=.3\textwidth]{../report/figures/restnet2.jpg}
+	\caption[caption]{ResNet152 architecture diagram. Source: \cite{resnet}, split for space reasons.}
+	\label{fig:resnet}
+	\end{center}
+	\end{figure}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Residual Block}
+
+	\begin{figure}[h]
+	\begin{center}
+	\vspace*{-0.5cm}
+	\includegraphics[width=0.9\textwidth]{../report/figures/block.jpg}
+	\caption[caption]{Diagram of residual block architecture. Source: \cite{dive}}
+	\label{fig:block}
+	\end{center}
+	\end{figure}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{ResNet152 Details}
+
+	\pause
+	\begin{table}[h]
+	\begin{center}
+
+	\vspace*{-0.5cm}
+	\hspace*{-0.25cm}
+	\resizebox{\textwidth}{!}{
+	\begin{tabular}{r | l | l}
+	\multirow{2}{*}{\shortstack{Hyperparameter/\\Setting}} & \multirow{2}{*}{Value(s)} & \multirow{2}{*}{Comment}\\
+	&&\\
+	\midrule
+	Random seed & 453 &\\
+	Batch size & 32 &\\
+	Epochs & 40 &\\
+	\midrule
+	Optimizer & Adam &\\
+	\cmidrule{2-3}
+	\multirow{4}{*}{Learning rate} & Full cards, primary type: 0.0005 &\\
+	& Full cards, archetype: 0.0003 &\\
+	& Artwork, primary type: 0.0001 &\\
+	& Artwork, archetype: 0.0001 &\\
+	\midrule
+	\multirow{2}{*}{Scheduler} & Reduce LR on plateau & \multirow{2}{*}{\shortstack{New $=$\\Old $\times$ Factor}}
+	\\
+	& Factor: 0.2 & \\
+	\end{tabular}
+	}
+	\vspace{0.1cm}
+	\caption{Model hyperparameter values.}
+	\label{tab:model-prefs}
+	\end{center}
+	\end{table}
+
+	\pause
+	\vspace{1cm}
+	\textcolor{red}{Note: Learning rate was tuned separately for each experiment to give each network a `fair' chance.}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Experiment
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+	\frametitle{Research Questions}
+	\pause
+	\begin{itemize}
+		\item \textbf{Dataset size \& classification task}: For a given image type (either full cards or artwork only), how do the size of the \textit{YGO} dataset (all cards vs. `large' archetype cards) and classification task (either primary type or `large' archetypes) jointly impact ResNet152's classification accuracy?
+	\pause
+		\item \textbf{Image type}: For a given size of \textit{YGO} dataset (either all cards or `large' archetype cards) and classification task (either primary type or `large' archetypes), how does image type (full cards vs. artwork only) impact ResNet152's classification accuracy?
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Experimental Design}
+
+\begin{table}[h]
+	\begin{center}
+		%\addtolength{\leftskip} {-0.75cm}
+		\begin{tabular}{ l  l | c | c |}
+			& \multicolumn{1}{r}{} & \multicolumn{2}{c}{\textbf{Target (Data subset)}} \\
+			\cmidrule{3-4}
+			Variable & Image & \shortstack{Primary Type\\(All cards)} & \shortstack{Archetype\\(`Large' arch.)} \\
+			\midrule
+			No. classes & \multirow{2}{*}{} & Less & More \\
+			Dataset size && More & Less \\
+			\midrule
+			\multirow{2}{*}{Image info.} & Full card & \multicolumn{2}{c|}{More}\\
+			\cmidrule{2-4}
+			& Artwork & \multicolumn{2}{c|}{Less}\\
+			\bottomrule
+		\end{tabular}
+	\vspace*{0.25cm}
+	\caption{Experimental parameters. Rows represent the two different information densities (full vs. artwork). Columns represent the two different dataset sizes (all vs. `large' archetypes).}
+	\label{tab:exp}
+	\end{center}
+\end{table}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Dataset}
+
+\begin{table}[h]
+	\begin{center}
+		%\addtolength{\leftskip} {-0.75cm}
+		\begin{tabular}{ l  l | c | c |}
+			& \multicolumn{1}{r}{} & \multicolumn{2}{c}{\textbf{Target (Data subset)}} \\
+			\cmidrule{3-4}
+			Image & Variable & \shortstack{Primary Type\\(All cards)} & \shortstack{Archetype\\(`Large' arch.)} \\
+			\midrule
+			& No. classes & 18 classes & 107 classes \\
+			& Dataset size & 11,149 images & 3,451 images \\
+			\cmidrule{2-4}
+			Full card & Image size & \multicolumn{2}{c|}{$614 H \times 422 W$} \\
+			\midrule
+			\multirow{2}{*}{Artwork} & \multirow{2}{*}{Image size} & \multicolumn{2}{c|}{\multirow{2}{*}{\shortstack{Normal: $320 H \times 322 W$\\Pendulum: $272 H \times 367 W$}}} \\
+			& & \multicolumn{2}{|c|}{} \\
+			\bottomrule
+		\end{tabular}
+	\vspace*{0.25cm}
+	\caption{Experimental parameters' values.}
+	\label{tab:exp2}
+	\end{center}
+\end{table}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Dataset: Data augmentation}
+
+\begin{table}[h]
+\begin{center}
+\vspace*{-1cm}
+\resizebox{1.05\textwidth}{!}{
+\begin{tabular}{c | l | l}
+Transform & Value(s)/Range & Comment \\
+\midrule
+Resize & Full card: 312x211 & HxW in px, half-sized\\
+\cmidrule{2-3}
+\multirow{4}{*}{\shortstack{Random\\resized crop}} & \multirow{4}{*}{Artwork: 272x322} & \multirow{4}{*}{\shortstack{HxW in px, each is the smaller image format's value\\for that dimension. This is akin to randomly shifting\\pendulum cards horizontally and non-pendulum\\cards vertically before cropping.}}\\
+&&\\
+&&\\
+&&\\
+\midrule
+\multirow{4}{*}{\shortstack{Random\\color jitter}} & Brightness: (0.75, 1.5) & \multirow{4}{*}{\shortstack{Multiplier uniformly chosen from range (min, max)}} \\
+& Contrast: (0.75, 1.5) & \\
+& Saturation: (0.75, 1.5) & \\
+& Hue: (0.9, 1.1) & \\
+\midrule
+\multirow{2}{*}{Random flip} & Horizontal: $p=0.5$ &\\
+& Vertical: $p=0.5$ &\\
+\midrule
+\multirow{5}{*}{\shortstack{Random affine\\transformation}} & Interpolation: Bilinear &\\
+\cmidrule{2-3}
+& \multirow{2}{*}{Translate: (0.2, 0.2)} & \multirow{2}{*}{\shortstack{Max. (H, W) shift (prop. of size)}}\\
+&&\\
+\cmidrule{2-3}
+& \multirow{2}{*}{Shear: (0, 10)} & \multirow{2}{*}{\shortstack{Degrees, both x and y (separately)}}\\
+&&\\
+\midrule
+\multirow{2}{*}{Normalize} & Mean: (0.485, 0.456, 0.406) & \multirow{2}{*}{\shortstack{(R, G, B), see \\\url{https://pytorch.org/vision/stable/models.html}}} \\
+& Std. dev.: (0.229, 0.224, 0.225) & \\
+\end{tabular}
+}
+\vspace{0.1cm}
+\caption{Data augmentation settings.}
+\label{tab:image-prefs}
+\end{center}
+\end{table}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Class Distributions}
+
+	\begin{figure}[t]
+	\begin{center}
+		  \includegraphics[width=0.52\textwidth]{../report/figures/card_type_general.pdf}
+		  \hspace{0.1cm}
+		  \includegraphics[width=0.4\textwidth]{../report/figures/large_arch.pdf}
+	\end{center}
+	\caption[caption]{Left: Distribution of primary types. ``M.'' is short for ``Monster'' and ``C.'' is short for ``Card''.; Right: Distribution of archetype size among `large' archetypes ($n\geq 20$).}
+	\label{fig:eda}
+	\end{figure}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Hardware \& Software}
+	\pause
+	\begin{itemize}
+	\item Google Colab
+	\pause
+	\item Used the pre-trained ResNet152 network in \texttt{torchvision}.
+	\pause
+	\item Since both datasets are heavily class-imbalanced, all data loaders included the \texttt{ImbalancedDatasetSampler} found in \texttt{torchsampler} \cite{imbal}.
+	\pause
+	\item Data wrangling was done with \texttt{Pandas} and \texttt{NumPy}.
+	\item Data splitting was done with \texttt{train\_test\_split} in \texttt{sklearn}.
+	\item Card data objects were serialized using \texttt{pickle}.
+	\item Plots were created using \texttt{matplotlib} based on modified code from Dr. Sebastian Raschka's \texttt{helper\_plotting.py} \cite{seb}.
+	\item `Wrapper' functions and classes were created that call functions from Dr. Sebastian Raschka in \texttt{helper\_dataset.py}, \texttt{helper\_evaluation.py}, and \texttt{helper\_train.py} \cite{seb}. 
+	\end{itemize}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Results
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+	\frametitle{Results}
+
+	\begin{itemize}
+	\item We will go network-by-network.
+	\item For each, we will discuss loss \& accuracy curves.
+	\item We will discuss as we go.
+	\item Then summarize.
+	\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Loss Curves}%1
+
+	\vspace{-0.75cm}
+	\begin{figure}[btp]
+	\begin{center}
+	\includegraphics[width=0.9\textwidth]{../report/figures/loss1.pdf}
+	\end{center}
+	\caption[caption]{Minibatch loss curves with running average for ResNet152 under each set of image--dataset conditions.}
+	\label{fig:loss}
+	\end{figure}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Accuracy Curves}%1
+
+	\vspace{-0.5cm}
+	\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.95\textwidth]{../report/figures/accuracy1.pdf}
+	\end{center}
+	\caption[caption]{Training (left) and validation (right) accuracy curves for ResNet152 under each set of image--dataset conditions.}
+	\label{fig:acc}
+	\end{figure}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Loss Curves}%2
+
+	\vspace{-0.75cm}
+	\begin{figure}[btp]
+	\begin{center}
+	\includegraphics[width=0.9\textwidth]{../report/figures/loss2.pdf}
+	\end{center}
+	\caption[caption]{Minibatch loss curves with running average for ResNet152 under each set of image--dataset conditions.}
+	\label{fig:loss}
+	\end{figure}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Accuracy Curves}%2
+
+	\vspace{-0.5cm}
+	\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.95\textwidth]{../report/figures/accuracy2.pdf}
+	\end{center}
+	\caption[caption]{Training (left) and validation (right) accuracy curves for ResNet152 under each set of image--dataset conditions.}
+	\label{fig:acc}
+	\end{figure}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Loss Curves}%3
+
+	\vspace{-0.75cm}
+	\begin{figure}[btp]
+	\begin{center}
+	\includegraphics[width=0.9\textwidth]{../report/figures/loss4.pdf}
+	\end{center}
+	\caption[caption]{Minibatch loss curves with running average for ResNet152 under each set of image--dataset conditions.}
+	\label{fig:loss}
+	\end{figure}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Accuracy Curves}%3
+
+	\vspace{-0.5cm}
+	\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.95\textwidth]{../report/figures/accuracy4.pdf}
+	\end{center}
+	\caption[caption]{Training (left) and validation (right) accuracy curves for ResNet152 under each set of image--dataset conditions.}
+	\label{fig:acc}
+	\end{figure}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Loss Curves}%4
+
+	\vspace{-0.75cm}
+	\begin{figure}[btp]
+	\begin{center}
+	\includegraphics[width=0.9\textwidth]{../report/figures/loss3.pdf}
+	\end{center}
+	\caption[caption]{Minibatch loss curves with running average for ResNet152 under each set of image--dataset conditions.}
+	\label{fig:loss}
+	\end{figure}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Accuracy Curves}%4
+
+	\vspace{-0.5cm}
+	\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.95\textwidth]{../report/figures/accuracy3.pdf}
+	\end{center}
+	\caption[caption]{Training (left) and validation (right) accuracy curves for ResNet152 under each set of image--dataset conditions.}
+	\label{fig:acc}
+	\end{figure}
+
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Loss Curves}
+
+	\vspace{-0.75cm}
+	\begin{figure}[btp]
+	\begin{center}
+	\includegraphics[width=0.9\textwidth]{../report/figures/loss.pdf}
+	\end{center}
+	\caption[caption]{Minibatch loss curves with running average for ResNet152 under each set of image--dataset conditions. Note that the gray and brown curves (Artwork, Archetype and Full, Archetype, respectively) end `prematurely' because these networks were trained on a smaller dataset for the same number of epochs as all other networks. An iteration is one epoch--batch, so for a fixed number of epochs, smaller datasets are trained for fewer total iterations.}
+	\label{fig:loss}
+	\end{figure}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Accuracy Curves}
+
+	\vspace{-0.5cm}
+	\begin{figure}[h]
+	\begin{center}
+	\includegraphics[width=0.95\textwidth]{../report/figures/accuracy.pdf}
+	\end{center}
+	\caption[caption]{Training (left) and validation (right) accuracy curves for ResNet152 under each set of image--dataset conditions.}
+	\label{fig:acc}
+	\end{figure}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Conclusion
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+	\frametitle{Conclusion}
+	\pause
+	\begin{itemize}
+	\item \textbf{Image type}: One result is trivial and one is inconclusive.
+		\begin{itemize}
+	\pause
+		\item Obviously, the full cards were better than the artwork at Primary Type classification. This is a baseline.
+	\pause
+		\item Two archetype networks had near-identical validation accuracy despite having different image types $\implies$ dataset size and classification task (jointly) were the bottleneck.
+	\pause
+		\item But even a big dataset isn't enough. Even with all cards' artwork, ResNet couldn't classify Primary Type---there was no \textit{relevant} information.
+		\end{itemize}
+	\pause
+	\item \textbf{Dataset size \& classification task}: Jointly, these were the primary determinant of ResNet152's ability to classify \textit{YGO} images.
+		\begin{itemize}
+		\item There weren't enough images in the dataset to train ResNet152 for a 107-class classification task, regardless of image.
+		\item The validation accuracies represent a `boundary condition' for ResNet152 on this dataset--target combination.
+		\end{itemize}
+	\end{itemize}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Bibliography
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[allowframebreaks]
+	\frametitle{References}
+	\footnotesize
+	\bibliography{../report/biblio.bib}
+\end{frame}
+
+\end{document}
